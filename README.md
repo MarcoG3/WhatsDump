@@ -50,6 +50,8 @@ You want to decrypt and/or extract msgstore.db database from your Android device
   - Hardware acceleration must be enabled to run Emulator without issues
   - SIM card associated with msgstore.db to receive WhatsApp confirmation PIN (SMS or CALL)
   
+  - Install all the Python library dependencies by running the following command: `pip install -r requirements.txt`
+  
 ### THIRD-PARTY LIBRARIES USED
 
   - [AndroidViewClient](https://github.com/dtmilano/AndroidViewClient/) by dtmilano
