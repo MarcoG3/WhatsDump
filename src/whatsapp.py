@@ -123,8 +123,8 @@ class WhatsApp:
         next_view.touch()
 
         # Confirm Dialog clicking "OK"
-        # Extend timeout to be 30*2 seconds because WhatsApp could take time to send code
-        confirm_view = self._wait_views(vc, 'android:id/button1', max_tries=30)
+        # Extend timeout to be 6*5 seconds (5 minutes) because WhatsApp could take time to send code
+        confirm_view = self._wait_views(vc, 'android:id/button1', max_tries=60, frequency=5)
 
         logger.info('Touching OK confirmation button...')
 
