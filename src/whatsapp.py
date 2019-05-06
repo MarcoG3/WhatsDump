@@ -86,16 +86,17 @@ class WhatsApp:
         if not self._allow_access(vc):
             raise WaException('Can not allow WhatsApp to access media/files')
 
-        return self._do_verify(vc, country_code, phone_no, verify_method, verify_callback)
+        if not self._do_verify(vc, country_code, phone_no, verify_method, verify_callback):
+            raise WaException('Can not verify phone number')
 
     def _do_verify(self, vc, cc, phone, method, code_callback):
         # Set country code
         cc_view = self._wait_views(vc, 'com.whatsapp:id/registration_cc')
 
+        logger.info('Touching and changing country code TextEdit...')
+
         if not cc_view:
             return False
-
-        logger.info('Touching and changing country code TextEdit...')
 
         cc_view.touch()
         cc_view.setText(str(cc))
@@ -103,10 +104,10 @@ class WhatsApp:
         # Set phone number
         number_view = self._wait_views(vc, 'com.whatsapp:id/registration_phone')
 
+        logger.info('Touching and changing phone number TextEdit...')
+
         if not number_view:
             return False
-
-        logger.info('Touching and changing phone number TextEdit...')
 
         number_view.touch()
         number_view.setText(str(phone))
@@ -114,20 +115,22 @@ class WhatsApp:
         # Click "Next"
         next_view = self._wait_views(vc, 'com.whatsapp:id/registration_submit')
 
+        logger.info('Touching registration submit button...')
+
         if not next_view:
             return False
 
-        logger.info('Touching registration submit button...')
         next_view.touch()
 
         # Confirm Dialog clicking "OK"
         # Extend timeout to be 30*2 seconds because WhatsApp could take time to send code
         confirm_view = self._wait_views(vc, 'android:id/button1', max_tries=30)
 
+        logger.info('Touching OK confirmation button...')
+
         if not confirm_view:
             return False
 
-        logger.info('Touching OK confirmation button...')
         confirm_view.touch()
 
         # Verify by call or SMS
