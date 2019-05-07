@@ -149,7 +149,7 @@ class WhatsApp:
             logger.debug('Expected Google Drive permission dialog, ignoring..')
 
         # Restore messages Activity
-        restore_btn_view = self._wait_views(vc, 'com.whatsapp:id/perform_restore')
+        restore_btn_view = self._wait_views(vc, 'com.whatsapp:id/perform_restore', max_tries=30, frequency=5)
 
         if not restore_btn_view:
             raise WaException('Cannot find restore button, is msgcrypt associated with +%d %s?' % (cc, phone))
