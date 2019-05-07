@@ -81,7 +81,7 @@ class AndroidSDK:
 
     def start_emulator(self, adb_client, show_screen, no_accel):
         emulator_device = None
-        params = '-avd %s -no-boot-anim -noaudio -no-snapshot -partition-size 2048 '
+        params = '-avd %s -no-boot-anim -noaudio -no-snapshot -partition-size 2047 '
 
         # Stop any running instance of WhatsDump AVD
         #self.stop_emulator(adb_client)
