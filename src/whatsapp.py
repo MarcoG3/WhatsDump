@@ -157,8 +157,8 @@ class WhatsApp:
         logger.info('Restoring messages... (might take a while)')
         restore_btn_view.touch()
 
-        # Wait for result (max 5 minutes)
-        result_msg_view = self._wait_views(vc, 'com.whatsapp:id/msgrestore_result_box', frequency=5, max_tries=60)
+        # Wait for result (max 15 minutes)
+        result_msg_view = self._wait_views(vc, 'com.whatsapp:id/msgrestore_result_box', frequency=10, max_tries=90)
 
         if not result_msg_view:
             raise WaException('Could not restore messages')
