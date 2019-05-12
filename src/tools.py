@@ -10,7 +10,7 @@ class ViewClientTools:
         self.adb_client = adb_client
 
     def get_viewclient(self):
-        vc_adb = VcAdbClient(self.adb_client.serial)
+        vc_adb = VcAdbClient(self.adb_client.serial, ignoreversioncheck=True)
 
         #FIXME
         time.sleep(5)
