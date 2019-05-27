@@ -52,22 +52,33 @@ class AndroidSDK:
             logger.error('Could not accept SDK Manager licenses')
             return False
 
-        # Install required packages
-        install_args = '--install extras;intel;Hardware_Accelerated_Execution_Manager emulator platform-tools platforms;android-23 system-images;android-23;google_apis;x86'
-
-        logger.info('Installing packages from SDK Manager...')
-        s2 = self._run_cmd_sdkmanager(install_args, input='y\n'*20, show=True)
+        # List all packages to check HAXM is supported
+        s2 = self._run_cmd_sdkmanager("--list")
+        s2_out, s2_err = s2.communicate()
 
         if s2.returncode != 0:
+            logger.error("Could not list SDK Manager packages")
+            return False
+
+        # Install required packages
+        install_args = '--install emulator platform-tools platforms;android-23 system-images;android-23;google_apis;x86'
+
+        if s2_out.find('extras;intel;Hardware_Accelerated_Execution_Manager') != -1:
+            install_args += ' extras;intel;Hardware_Accelerated_Execution_Manager'
+
+        logger.info('Installing packages from SDK Manager...')
+        s3 = self._run_cmd_sdkmanager(install_args, input='y\n'*20, show=True)
+
+        if s3.returncode != 0:
             logger.error('Could not install packages from SDK Manager')
             return False
 
         # Create AVD
         logger.info('Creating AVD image...')
-        s3 = self._run_cmd_avdmanager('create avd --force --name %s -k system-images;android-23;google_apis;x86' % self.AVD_NAME,
+        s4 = self._run_cmd_avdmanager('create avd --force --name %s -k system-images;android-23;google_apis;x86' % self.AVD_NAME,
                            input='no\n', show=True)
 
-        if s3.returncode != 0:
+        if s4.returncode != 0:
             logger.error('Could not create %s AVD from AVD Manager', self.AVD_NAME)
             return False
 

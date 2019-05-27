@@ -79,7 +79,7 @@ def main():
             logger.error('Failed to install Android SDK')
             exit(1)
 
-        logger.info('Android AVD successfully installed')
+        logger.info('\nAndroid AVD successfully installed')
         exit(0)
     else:
         if not is_avd_installed:
