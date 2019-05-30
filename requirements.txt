@@ -1,4 +1,4 @@
-androidviewclient==15.5.1
+androidviewclient==15.8.0
 args==0.1.0
 backports.functools-lru-cache==1.5
 certifi==2018.11.29
