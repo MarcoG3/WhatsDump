@@ -2,15 +2,17 @@
 Extract WhatsApp private key from any Android device (Android 7+ supported).
 This tool spawns a clean Android 6 emulator and attempts to register with your number to extract msgstore private key.
 
-*NOTE: this tool is in beta stage and might not be stable. You're more than welcome to improve this software by submitting a PR!*
+*NOTE: this tool is in beta stage and might not be stable. You're more than welcome to improve this software by submitting a PR or an issue!*
 
 ### SUPPORTED OPERATING SYSTEMS
-
-Any system running Python 2.7.x
 
 - Mac OSX
 - Windows
 - Linux
+
+### RELEASES
+
+To use WhatsDump without installing Python and its dependencies, you can find pre-built binaries (thanks to PyInstaller) here: https://github.com/MarcoG3/WhatsDump/releases
 
 ### USE CASE
 You want to decrypt and/or extract msgstore.db database from your Android device.
