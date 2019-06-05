@@ -72,19 +72,19 @@ def main():
     if args.install_sdk:
         if is_avd_installed:
             logger.error("WhatsDump AVD already installed! Remove android-sdk/ directory to reinstall Android SDK")
-            exit(1)
+            sys.exit(1)
 
         # download&install
         if not sdk.install():
             logger.error('Failed to install Android SDK')
-            exit(1)
+            sys.exit(1)
 
         logger.info('\nAndroid AVD successfully installed')
-        exit(0)
+        sys.exit(0)
     else:
         if not is_avd_installed:
             logger.error("Cannot find WhatsDump AVD; install Android SDK and emulator packages with --install-sdk")
-            exit(1)
+            sys.exit(1)
 
     # Connect / Start ADB server
     adb_client = AdbClient()
@@ -101,14 +101,14 @@ def main():
             logger.info("Connected to ADB (version %d) @ 127.0.0.1:5037" % adb_client.version())
         else:
             logger.error('Could not connect/start ADB server')
-            exit(1)
+            sys.exit(1)
 
     # Require msgstore or connected device
     if args.msgstore:
         # Check if file exists
         if not os.path.isfile(args.msgstore):
             logger.error("Msgstore location is not valid (file does not exist)")
-            exit(1)
+            sys.exit(1)
     else:
         logger.info("Msgstore location not provided, attempting to find connected devices with ADB...\n")
 
@@ -118,7 +118,7 @@ def main():
         # If no devices and no msgstore, quit
         if len(devices) == 0:
             logger.error("Cannot find any connected devices")
-            exit(1)
+            sys.exit(1)
 
         # Show all devices
         for device in devices:
@@ -138,7 +138,7 @@ def main():
     # Validate required phone
     if not args.wa_phone:
         logger.error("Please provide the phone number associated with msgstore")
-        exit(1)
+        sys.exit(1)
     else:
         # Add "+" if not given
         if args.wa_phone[0] != '+':
@@ -151,11 +151,11 @@ def main():
 
         if not phone:
             logger.error("Provided phone number is NOT valid")
-            exit(1)
+            sys.exit(1)
 
     if not args.wa_verify:
         logger.error("Please provide a WhatsApp verification method")
-        exit(1)
+        sys.exit(1)
 
     # recap
     if source_device:
@@ -169,7 +169,7 @@ def main():
     yn = raw_input("\n>> Continue? (y/n): ")
 
     if yn != 'y':
-        exit(0)
+        sys.exit(0)
 
     # create phone directory tree where to store results
     dst_path = os.path.join(os.path.abspath('output'), str(phone.national_number))
@@ -178,7 +178,7 @@ def main():
             os.makedirs(dst_path)
         except OSError:
             logging.error('Cannot create output directory tree')
-            exit(1)
+            sys.exit(1)
 
     log_formatter = logging.Formatter("%(asctime)s - [%(levelname)s]: %(message)s")
     file_handler = logging.FileHandler(os.path.join(dst_path, 'log.txt'))
@@ -199,7 +199,7 @@ def main():
 
         if not msgstore_path:
             logger.error('Could not find/extract msgstore database from device (is WhatsApp installed?)')
-            exit(1)
+            sys.exit(1)
 
         logger.info('Extracted msgstore.db SHA-256 hash: %s', sha256(msgstore_path))
 
@@ -213,7 +213,7 @@ def main():
 
     if not emulator_device:
         logger.error('Could not start emulator!')
-        exit(1)
+        sys.exit(1)
 
     if args.show_emulator:
         logger.info('Do not interact with the emulator!')
@@ -227,7 +227,7 @@ def main():
         wa_emu.register_phone(msgstore_path, phone.country_code, phone.national_number, args.wa_verify, wa_code_callback)
     except WaException, e:
         logger.error('Exception in verification: %s', e.reason)
-        exit(1)
+        sys.exit(1)
 
     logger.info('Phone registered successfully!')
     logger.info('Extracting key...')
@@ -235,7 +235,7 @@ def main():
     # Extract private key
     if not wa_emu.extract_priv_key(dst_path):
         logger.error('Could not extract private key!')
-        exit(1)
+        sys.exit(1)
 
     logger.info('Private key extracted in %s', os.path.join(dst_path, 'key'))
 
