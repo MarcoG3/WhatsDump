@@ -63,7 +63,7 @@ class AndroidSDK:
         # Install required packages
         install_args = '--install emulator platform-tools platforms;android-23 system-images;android-23;google_apis;x86'
 
-        if s2_out.find('extras;intel;Hardware_Accelerated_Execution_Manager') != -1:
+        if s2_out and s2_out.find('extras;intel;Hardware_Accelerated_Execution_Manager') != -1:
             install_args += ' extras;intel;Hardware_Accelerated_Execution_Manager'
 
         logger.info('Installing packages from SDK Manager...')
