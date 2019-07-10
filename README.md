@@ -32,7 +32,7 @@ You want to decrypt and/or extract msgstore.db database from your Android device
 | --wa-phone      | Required      | WhatsApp phone number associated with msgstore database <br />from which you will receive verification SMS (with prefix, ex. +393387182291  |
 | --wa-verify     | Required      | Phone verification method to use (SMS or CALL)  |
 | --install-sdk   | Optional      | Installs Android SDK on android-sdk/ directory. This is mandatory to run WhatsDump  |
-| --msg-store     | Optional      | Location of msgstore database to decrypt (or plug in device to USB port)  |
+| --msgstore     | Optional      | Location of msgstore database to decrypt (or plug in device to USB port)  |
 | --verbose       | Optional      | Show verbose (debug) output  |
 | --show-emulator | Optional      | Show emulator screen (by default headless)  |
 | --no-accel      | Optional      | Disable hardware acceleration (very slow emulator)  |
