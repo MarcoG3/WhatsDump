@@ -84,7 +84,8 @@ class WhatsApp:
             raise WaException('Can not accept EULA')
 
         if not self._allow_access(vc):
-            raise WaException('Can not allow WhatsApp to access media/files')
+            logger.warning("Skipped allowing WhatsApp to access media/files")
+            #raise WaException('Can not allow WhatsApp to access media/files')
 
         if not self._do_verify(vc, country_code, phone_no, verify_method, verify_callback):
             raise WaException('Can not verify phone number')
