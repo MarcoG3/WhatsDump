@@ -23,6 +23,9 @@ class AndroidSDK:
         self._sdk_path = os.path.abspath('android-sdk')
         self._env = self._get_env_vars()
 
+        # Update original environment var
+        os.environ['ANDROID_HOME'] = self._env['ANDROID_HOME']
+
     def install(self):
         # Create android-sdk/ directory and download latest SDK
         if not os.path.exists('android-sdk'):
