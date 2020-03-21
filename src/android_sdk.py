@@ -177,7 +177,7 @@ class AndroidSDK:
             logger.info('Downloading and installing Android SDK...')
 
             # Download
-            r = requests.get('https://developer.android.com/studio/')
+            r = requests.get('https://web.archive.org/web/20190403122148/https://developer.android.com/studio/')
 
             if r.status_code != 200:
                 logger.error('Failed GET request to developer.android.com')
