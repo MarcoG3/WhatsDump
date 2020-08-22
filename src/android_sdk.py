@@ -183,7 +183,7 @@ class AndroidSDK:
                 logger.error('Failed GET request to developer.android.com')
                 return False
 
-            sdk_re = re.search(r'https://dl.google.com/android/repository/sdk-tools-' + platform.system().lower() + '-(\d+).zip', r.text)
+            sdk_re = re.search(r'https://dl.google.com/android/repository/commandlinetools-' + platform.system().lower() + '-\d+.*\.zip', r.text)
 
             if not sdk_re:
                 logger.error('Failed regex matching to find latest Android SDK (platform %s)', platform.system())
