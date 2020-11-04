@@ -15,6 +15,7 @@ def suppress_stderr():
         finally:
             sys.__stderr__ = old_stderr
 
+
 def sha256(filename):
     hash_sha256 = hashlib.sha256()
 

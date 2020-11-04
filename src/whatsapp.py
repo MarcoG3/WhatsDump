@@ -3,8 +3,8 @@ import logging
 import time
 
 from adb import InstallError
-from utils import suppress_stderr
-from tools import ViewClientTools
+from src.utils import suppress_stderr
+from src.tools import ViewClientTools
 
 logger = logging.getLogger('WhatsDump')
 
@@ -60,7 +60,7 @@ class WhatsApp:
         try:
             if not self._install():
                 raise WaException('Can not install WhatsApp APK')
-        except InstallError, e:
+        except InstallError as e:
             raise WaException(e.message)
 
         # Step 3a: create / clean /WhatsApp/ data directory
@@ -384,7 +384,7 @@ class WhatsApp:
             try:
                 with suppress_stderr():
                     vc.dump(sleep=0)
-            except RuntimeError, e:
+            except RuntimeError as e:
                 logger.error('Exception while trying to dump views: %s', e.message)
                 pass
 

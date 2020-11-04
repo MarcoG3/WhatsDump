@@ -19,9 +19,12 @@ class CommandType:
 class AndroidSDK:
     AVD_NAME = 'WhatsDump'
 
-    def __init__(self):
+    def __init__(self, avd_name=None):
         self._sdk_path = os.path.abspath('android-sdk')
         self._env = self._get_env_vars()
+
+        if avd_name is not None:
+            self.AVD_NAME = avd_name
 
         # Update original environment var
         os.environ['ANDROID_HOME'] = self._env['ANDROID_HOME']
