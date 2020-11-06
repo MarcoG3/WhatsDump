@@ -48,7 +48,8 @@ class WhatsApp:
     def register_phone(self, msgstore_path, country_code, phone_no, verify_method, verify_callback):
         # Step 0: install culebra dependencies
         tools = ViewClientTools(self.adb_client)
-        tools.install_culebra_tools()
+        # print("Ehiii", tools)
+        # tools.install_culebra_tools()
 
         # Step 1: cleanup
         if not self._uninstall():
@@ -74,6 +75,7 @@ class WhatsApp:
 
         # FIXME?
         vc = tools.get_viewclient()
+        print("Ciao", vc)
 
         # Step 4: open whatsapp
         if not self._open_app():

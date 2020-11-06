@@ -20,7 +20,7 @@ def wa_code_callback():
     code = ''
 
     while len(code) != 6:
-        code = raw_input('\n>> 6-Digit Verification Code (empty string to resend): ')
+        code = input('\n>> 6-Digit Verification Code (empty string to resend): ')
         code = code.strip()
         code = re.sub(r'-\s*', '', code)
 
@@ -127,7 +127,7 @@ def main():
 
         print('\n')
         while source_device is None:
-            dev_index = int(raw_input("\n>> Which device number you want to extract msgstore from?: "))
+            dev_index = int(input("\n>> Which device number you want to extract msgstore from?: "))
 
             if dev_index < 0 or dev_index+1 > len(devices):
                 continue
@@ -166,10 +166,10 @@ def main():
     logger.info('Using WhatsApp phone number: +%d %d', phone.country_code, phone.national_number)
     logger.info('Using WhatsApp verification method: %s', args.wa_verify.upper())
 
-    yn = raw_input("\n>> Continue? (y/n): ")
+    # yn = input("\n>> Continue? (y/n): ")
 
-    if yn != 'y':
-        sys.exit(0)
+    # if yn != 'y':
+    #     sys.exit(0)
 
     # create phone directory tree where to store results
     dst_path = os.path.join(os.path.abspath('output'), str(phone.national_number))
@@ -222,6 +222,7 @@ def main():
 
     # Attempt to register phone using provided msgstore
     wa_emu = WhatsApp(emulator_device)
+    print(wa_emu)
 
     try:
         wa_emu.register_phone(msgstore_path, phone.country_code, phone.national_number, args.wa_verify, wa_code_callback)

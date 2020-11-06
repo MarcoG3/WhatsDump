@@ -14,10 +14,11 @@ class CommandType:
     PLATFORM_TOOLS = 1,
     TOOLS = 2,
     TOOLS_BIN = 3
+    EMULATOR = 4
 
 
 class AndroidSDK:
-    AVD_NAME = 'WhatsDump'
+    AVD_NAME = 'WhatsDump3'
 
     def __init__(self, avd_name=None):
         self._sdk_path = os.path.abspath('android-sdk')
@@ -67,9 +68,9 @@ class AndroidSDK:
             return False
 
         # Install required packages
-        install_args = '--install emulator platform-tools platforms;android-23 system-images;android-23;google_apis;x86'
+        install_args = '--install emulator platform-tools platforms;android-29 system-images;android-29;google_apis;x86'
 
-        if s2_out and s2_out.find('extras;intel;Hardware_Accelerated_Execution_Manager') != -1:
+        if s2_out and s2_out.find('extras;intel;Hardware_Accelerated_Execution_Manager'.encode()) != -1:
             install_args += ' extras;intel;Hardware_Accelerated_Execution_Manager'
 
         logger.info('Installing packages from SDK Manager...')
@@ -81,8 +82,7 @@ class AndroidSDK:
 
         # Create AVD
         logger.info('Creating AVD image...')
-        s4 = self._run_cmd_avdmanager('create avd --force --name %s -k system-images;android-23;google_apis;x86' % self.AVD_NAME,
-                           input='no\n', show=True)
+        s4 = self._run_cmd_avdmanager('create avd --force --name %s -k system-images;android-29;google_apis;x86' % self.AVD_NAME, input='no\n', show=True)
 
         if s4.returncode != 0:
             logger.error('Could not create %s AVD from AVD Manager', self.AVD_NAME)
@@ -98,7 +98,7 @@ class AndroidSDK:
 
     def start_emulator(self, adb_client, show_screen, no_accel):
         emulator_device = None
-        params = '-avd %s -no-boot-anim -noaudio -no-snapshot -partition-size 2047 '
+        params = '-avd %s -writable-system -selinux permissive -no-boot-anim -noaudio -no-snapshot -partition-size 2047 '
 
         # Stop any running instance of WhatsDump AVD
         #self.stop_emulator(adb_client)
@@ -111,8 +111,7 @@ class AndroidSDK:
             params += '-no-accel -gpu on '
 
         # Start emulator
-        proc = self._run_cmd_emulator(params % self.AVD_NAME, show_screen,
-                                      wait=False, show=True)
+        proc = self._run_cmd_emulator(params % self.AVD_NAME, show_screen, wait=False, show=True)
 
         # Check if any emulator connects to ADB
         while not emulator_device:
@@ -221,11 +220,28 @@ class AndroidSDK:
     def _run_cmd_avdmanager(self, args, wait=True, input=None, show=False):
         return self._run_cmd(CommandType.TOOLS_BIN, 'avdmanager', args, wait, input, show)
 
+    # https://stackoverflow.com/questions/51606128/windows-emulator-exe-panic-missing-emulator-engine-program-for-x86-cpu/51627009
+    """
+    If you want to run emulator from command line,
+
+    <your-full-path>/emulator -avd 5.1_WVGA_API_28
+    For newer version of Android SDK, the emulator path should be something as below:
+
+    /<xxx>/Android/sdk/emulator/emulator
+    For older version of Android SDK, the emulator path is as below:
+
+    /<xxx>/Android/sdk/tools/emulator
+    Try either one of above to see which is your case.
+
+    Here is the official document for Android emulator command line usage: https://developer.android.com/studio/run/emulator-commandline
+    """
+
     def _run_cmd_emulator(self, args, show_screen, wait=True, input=None, show=False):
         if not show_screen:
             args += ' -no-window'
 
-        return self._run_cmd(CommandType.TOOLS, 'emulator', args, wait, input, show)
+        # return self._run_cmd(CommandType.TOOLS, 'emulator', args, wait, input, show)
+        return self._run_cmd(CommandType.EMULATOR, 'emulator', args, wait, input, show)
 
     def _run_cmd_adb(self, args, wait=True, input=None, show=False):
         return self._run_cmd(CommandType.PLATFORM_TOOLS, 'adb', args, wait, input, show)
@@ -238,6 +254,8 @@ class AndroidSDK:
             path = os.path.join(self._sdk_path, 'platform-tools')
         elif type == CommandType.TOOLS:
             path = os.path.join(self._sdk_path, 'tools')
+        elif type == CommandType.EMULATOR:
+            path = os.path.join(self._sdk_path, 'emulator')
         elif type == CommandType.TOOLS_BIN:
             path = os.path.join(self._sdk_path, 'tools', 'bin')
 
@@ -250,6 +268,7 @@ class AndroidSDK:
 
     # TODO: log SDK installation output / errors to android-sdk/log.txt
     def _run_raw_cmd(self, cmd, wait=True, input=None, show=False):
+        print(cmd)
         args = cmd.split()
 
         # Set executable permission on linux if not set (zipfile not preserving permissions)
@@ -263,7 +282,7 @@ class AndroidSDK:
                                 stderr=None if show else subprocess.PIPE)
 
         if input:
-            proc.stdin.write(input)
+            proc.stdin.write(input.encode())
             proc.stdin.close()
 
         if wait:
@@ -283,6 +302,7 @@ class AndroidSDK:
         new_env['ANDROID_HOME'] = self._sdk_path
         new_env['ANDROID_SDK_HOME'] = self._sdk_path
         new_env['ANDROID_SDK_ROOT'] = self._sdk_path
-        new_env['ANDROID_AVD_HOME'] = os.path.join(self._sdk_path, '.android').join('avd')
+        new_env['ANDROID_AVD_HOME'] = "/home/alessandro/.android/avd/"  # os.path.join(self._sdk_path, '.android').join('avd')
+        # print(new_env['ANDROID_AVD_HOME'])
 
         return new_env
