@@ -1,9 +1,12 @@
 import subprocess
-import os, stat, platform
+import os
+import stat
+import platform
 import time
 import logging
 import re
-import requests, zipfile
+import requests
+import zipfile
 
 from clint.textui import progress
 
@@ -80,6 +83,9 @@ class AndroidSDK:
             logger.error('Could not install packages from SDK Manager')
             return False
 
+        return self.create_avd()
+
+    def create_avd(self):
         # Create AVD
         logger.info('Creating AVD image...')
         s4 = self._run_cmd_avdmanager('create avd --force --name %s -k system-images;android-29;google_apis;x86' % self.AVD_NAME, input='no\n', show=True)
@@ -87,7 +93,6 @@ class AndroidSDK:
         if s4.returncode != 0:
             logger.error('Could not create %s AVD from AVD Manager', self.AVD_NAME)
             return False
-
         return True
 
     def start_adb(self, port=5037):
@@ -96,12 +101,15 @@ class AndroidSDK:
     def stop_adb(self):
         return self._run_cmd_adb('kill-server').returncode == 0
 
+    def adb_root(self):
+        return self._run_cmd_adb('root').returncode == 0
+
     def start_emulator(self, adb_client, show_screen, no_accel):
         emulator_device = None
         params = '-avd %s -writable-system -selinux permissive -no-boot-anim -noaudio -no-snapshot -partition-size 2047 '
 
         # Stop any running instance of WhatsDump AVD
-        #self.stop_emulator(adb_client)
+        # self.stop_emulator(adb_client)
 
         # Snapshot of currently running devices
         devices_snap = adb_client.devices()
@@ -154,7 +162,7 @@ class AndroidSDK:
     def is_avd_installed(self):
         try:
             process = self._run_cmd_avdmanager('list avd')
-        except:
+        except Exception:
             return False
 
         if process.returncode != 0:
@@ -302,7 +310,5 @@ class AndroidSDK:
         new_env['ANDROID_HOME'] = self._sdk_path
         new_env['ANDROID_SDK_HOME'] = self._sdk_path
         new_env['ANDROID_SDK_ROOT'] = self._sdk_path
-        new_env['ANDROID_AVD_HOME'] = "/home/alessandro/.android/avd/"  # os.path.join(self._sdk_path, '.android').join('avd')
-        # print(new_env['ANDROID_AVD_HOME'])
-
+        new_env['ANDROID_AVD_HOME'] = os.path.join(self._sdk_path, '.android/avd/')
         return new_env

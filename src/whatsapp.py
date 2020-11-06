@@ -4,7 +4,8 @@ import time
 
 from adb import InstallError
 from src.utils import suppress_stderr
-from src.tools import ViewClientTools
+
+from com.dtmilano.android.viewclient import ViewClient
 
 logger = logging.getLogger('WhatsDump')
 
@@ -46,10 +47,7 @@ class WhatsApp:
         return self.adb_client.pull('/data/data/com.whatsapp/files/key', dst_full_path) is None
 
     def register_phone(self, msgstore_path, country_code, phone_no, verify_method, verify_callback):
-        # Step 0: install culebra dependencies
-        tools = ViewClientTools(self.adb_client)
-        # print("Ehiii", tools)
-        # tools.install_culebra_tools()
+        # Step 0: install culebra dependencies - Skipped
 
         # Step 1: cleanup
         if not self._uninstall():
@@ -73,21 +71,21 @@ class WhatsApp:
         logger.info('Moving extracted database into emulator...')
         self.adb_client.push(msgstore_path, os.path.join('/sdcard/WhatsApp/Databases/', os.path.basename(msgstore_path)))
 
-        # FIXME?
-        vc = tools.get_viewclient()
-        print("Ciao", vc)
+        device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial)
+        vc = ViewClient(device=device, serialno=serialn)
+        logger.info("Here the view client {} for: {} {}".format(vc, device, serialn))
 
         # Step 4: open whatsapp
         if not self._open_app():
             raise WaException('Can not open WhatsApp application')
 
+        time.sleep(10)
         # Step 5: automate registration
         if not self._automate_accept_eula(vc):
             raise WaException('Can not accept EULA')
 
         if not self._allow_access(vc):
             logger.warning("Skipped allowing WhatsApp to access media/files")
-            #raise WaException('Can not allow WhatsApp to access media/files')
 
         if not self._do_verify(vc, country_code, phone_no, verify_method, verify_callback):
             raise WaException('Can not verify phone number')
@@ -144,6 +142,34 @@ class WhatsApp:
             logger.info('You should receive a call by WhatsApp soon')
             self._verify_by_call(vc, code_callback)
 
+        time.sleep(5)
+        self.adb_client.shell('pm grant com.whatsapp android.permission.WRITE_CONTACTS')
+        time.sleep(5)
+        self.adb_client.shell('pm grant com.whatsapp android.permission.READ_CONTACTS')
+        time.sleep(5)
+
+        # If adb shell not work use this
+        # com.whatsapp:id/submit
+        # com.android.permissioncontroller:id/permission_allow_button
+
+        """
+        android.permission.READ_CALL_LOG: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.ACCESS_FINE_LOCATION: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.ANSWER_PHONE_CALLS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.RECEIVE_SMS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        ** android.permission.READ_EXTERNAL_STORAGE: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.ACCESS_COARSE_LOCATION: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.READ_PHONE_STATE: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.SEND_SMS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.CALL_PHONE: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.WRITE_CONTACTS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.CAMERA: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.GET_ACCOUNTS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.WRITE_EXTERNAL_STORAGE: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        ** android.permission.READ_CONTACTS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        """
+
         # Restore messages
         gdrive_msg_view = self._wait_views(vc, 'android:id/message', max_tries=5)
         skip_btn_view = self._wait_views(vc, 'android:id/button2', max_tries=5)
@@ -167,7 +193,6 @@ class WhatsApp:
             raise WaException('Could not restore messages')
 
         logger.info('%s', result_msg_view.getText())
-
         return True
 
     def _verify_by_sms(self, vc, code_callback):
@@ -333,7 +358,7 @@ class WhatsApp:
         return True
 
     def _automate_accept_eula(self, vc):
-        msg_view = self._wait_views(vc, 'android:id/message')
+        msg_view = self._wait_views(vc, 'android:id/message', frequency=6, max_tries=5)
 
         # Accept custom ROM alert
         if msg_view and msg_view.getText().find('ROM') != -1:
@@ -343,17 +368,14 @@ class WhatsApp:
                 return False
 
             logger.info('Touching "OK" at custom ROM alert...')
-
             ok_btn.touch()
 
         # Agree to EULA
         msg_view = self._wait_views(vc, 'com.whatsapp:id/eula_accept')
-
         if not msg_view:
             return False
 
         logger.info('Agreeing to EULA...')
-
         msg_view.touch()
         return True
 
@@ -379,30 +401,20 @@ class WhatsApp:
 
     def _wait_views(self, vc, ids, frequency=2, max_tries=10):
         ids = ids if isinstance(ids, list) else [ids]
-        i = 0
-
-        while i < max_tries:
-            # Update view
-            try:
+        for attempt in range(max_tries):
+            try:  # Update view
                 with suppress_stderr():
                     vc.dump(sleep=0)
             except RuntimeError as e:
                 logger.error('Exception while trying to dump views: %s', e.message)
-                pass
 
             # Check if it can find any of the IDs
-            for id in ids:
-                view = vc.findViewById(id)
-
+            for _id in ids:
+                view = vc.findViewById(_id)
                 if view:
                     if logger.level == logging.DEBUG:
                         vc.traverse()
-
                     return view
 
-            # Check every X seconds
-            time.sleep(frequency)
-
-            i += 1
-
+            time.sleep(frequency)  # Check every X seconds
         return None

@@ -6,6 +6,7 @@ import phonenumbers
 import os
 import logging
 import re
+import time
 
 from src.utils import sha256
 from src.android_sdk import AndroidSDK
@@ -222,7 +223,9 @@ def main():
 
     # Attempt to register phone using provided msgstore
     wa_emu = WhatsApp(emulator_device)
-    print(wa_emu)
+    sdk.adb_root()  # Allowing adb as root
+
+    time.sleep(10)
 
     try:
         wa_emu.register_phone(msgstore_path, phone.country_code, phone.national_number, args.wa_verify, wa_code_callback)
