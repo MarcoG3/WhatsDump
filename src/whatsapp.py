@@ -71,9 +71,18 @@ class WhatsApp:
         logger.info('Moving extracted database into emulator...')
         self.adb_client.push(msgstore_path, os.path.join('/sdcard/WhatsApp/Databases/', os.path.basename(msgstore_path)))
 
-        device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial)
+        device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial, verbose=False)
         vc = ViewClient(device=device, serialno=serialn)
-        logger.info("Here the view client {} for: {} {}".format(vc, device, serialn))
+
+        for permission in [
+            'android.permission.WRITE_CONTACTS',
+            'android.permission.READ_CONTACTS',
+            'android.permission.WRITE_EXTERNAL_STORAGE',
+            'android.permission.READ_EXTERNAL_STORAGE'
+        ]:
+            logger.info("pm grant com.whatsapp {}".format(permission))
+            self.adb_client.shell("pm grant com.whatsapp {}".format(permission))
+            time.sleep(0.05)
 
         # Step 4: open whatsapp
         if not self._open_app():
@@ -104,7 +113,6 @@ class WhatsApp:
 
         # Set phone number
         number_view = self._wait_views(vc, 'com.whatsapp:id/registration_phone')
-
         logger.info('Touching and changing phone number TextEdit...')
 
         if not number_view:
@@ -142,32 +150,14 @@ class WhatsApp:
             logger.info('You should receive a call by WhatsApp soon')
             self._verify_by_call(vc, code_callback)
 
-        time.sleep(5)
-        self.adb_client.shell('pm grant com.whatsapp android.permission.WRITE_CONTACTS')
-        time.sleep(5)
-        self.adb_client.shell('pm grant com.whatsapp android.permission.READ_CONTACTS')
-        time.sleep(5)
-
-        # If adb shell not work use this
-        # com.whatsapp:id/submit
-        # com.android.permissioncontroller:id/permission_allow_button
-
         """
-        android.permission.READ_CALL_LOG: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
-        android.permission.ACCESS_FINE_LOCATION: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.ANSWER_PHONE_CALLS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.RECEIVE_SMS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
-        ** android.permission.READ_EXTERNAL_STORAGE: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
-        android.permission.ACCESS_COARSE_LOCATION: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.READ_PHONE_STATE: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.SEND_SMS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
-        android.permission.CALL_PHONE: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.WRITE_CONTACTS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.CAMERA: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.GET_ACCOUNTS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        android.permission.WRITE_EXTERNAL_STORAGE: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
-        android.permission.RECORD_AUDIO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
-        ** android.permission.READ_CONTACTS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        # If adb shell not work use this
+        for allow_attempt in range(0, 3):
+            try:
+                self._wait_views(vc, 'com.whatsapp:id/submit', max_tries=3).touch()
+                self._wait_views(vc, 'com.android.permissioncontroller:id/permission_allow_button', max_tries=3).touch()
+            except Exception as e:
+                logger.error("{} - Exception raised: {}".format(allow_attempt, e))
         """
 
         # Restore messages
@@ -175,7 +165,9 @@ class WhatsApp:
         skip_btn_view = self._wait_views(vc, 'android:id/button2', max_tries=5)
 
         if not gdrive_msg_view and not skip_btn_view:
-            logger.debug('Expected Google Drive permission dialog, ignoring..')
+            logger.info('Expected Google Drive permission dialog, ignoring..')
+        else:
+            skip_btn_view.touch()
 
         # Restore messages Activity
         restore_btn_view = self._wait_views(vc, 'com.whatsapp:id/perform_restore', max_tries=30, frequency=5)
@@ -198,8 +190,8 @@ class WhatsApp:
     def _verify_by_sms(self, vc, code_callback):
         while True:
             code = code_callback()
-
-            if code:
+            logger.info("# Debug - Codice ricevuto: {}".format(code))
+            if code is not None:
                 if self._try_code(vc, code):
                     return True
 
@@ -265,7 +257,7 @@ class WhatsApp:
             # Ask code
             code = code_callback()
 
-            if code:
+            if code is not None:
                 if self._try_code(vc, code):
                     return True
 
@@ -276,11 +268,19 @@ class WhatsApp:
                 logger.info('Attempting to request a new Call...')
                 request_call = True
 
-    def _try_code(self, vc, code):
+    def _try_code_adb(self, code):
+        logger.info("am start -a android.intent.action.VIEW -d https://v.whatsapp.com/{} com.whatsapp".format(code))
+        return self.adb_client.shell('am start -a android.intent.action.VIEW -d https://v.whatsapp.com/{} com.whatsapp'.format(code)).find('Error') == -1
+
+    def _try_code(self, vc, code, use_adb=True):
+        if use_adb is True and self._try_code_adb(code) is True:
+            return True  # If failed, continue with ui interaction
+
         # Input text
         code_input_view = self._wait_views(vc, 'com.whatsapp:id/verify_sms_code_input')
 
         if not code_input_view:
+            logger.error('Could not find SMS code input TextEdit')
             raise WaException('Could not find SMS code input TextEdit')
 
         code_input_view.setText(code)
@@ -412,8 +412,8 @@ class WhatsApp:
             for _id in ids:
                 view = vc.findViewById(_id)
                 if view:
-                    if logger.level == logging.DEBUG:
-                        vc.traverse()
+                    # if logger.level == logging.DEBUG:
+                    # vc.traverse()
                     return view
 
             time.sleep(frequency)  # Check every X seconds

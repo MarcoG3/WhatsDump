@@ -19,16 +19,12 @@ logger = logging.getLogger('WhatsDump')
 
 def wa_code_callback():
     code = ''
-
     while len(code) != 6:
         code = input('\n>> 6-Digit Verification Code (empty string to resend): ')
         code = code.strip()
         code = re.sub(r'-\s*', '', code)
-
-        # empty -> resend
         if code == '':
             return None
-
     return code
 
 
@@ -62,7 +58,7 @@ def main():
     ''')
 
     # Setup logging
-    logging.basicConfig(format='[%(levelname)s] %(message)s', stream=sys.stdout)
+    logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s", datefmt="%d/%m/%Y %H:%M:%S", stream=sys.stdout)
     logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     # TODO: CHECK IF JAVA IS INSTALLED
@@ -181,7 +177,7 @@ def main():
             logging.error('Cannot create output directory tree')
             sys.exit(1)
 
-    log_formatter = logging.Formatter("%(asctime)s - [%(levelname)s]: %(message)s")
+    log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s", datefmt="%d/%m/%Y %H:%M:%S")
     file_handler = logging.FileHandler(os.path.join(dst_path, 'log.txt'))
     file_handler.setFormatter(log_formatter)
     logger.addHandler(file_handler)
