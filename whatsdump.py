@@ -6,6 +6,7 @@ import phonenumbers
 import os
 import logging
 import re
+import code
 import time
 
 from src.utils import sha256
@@ -46,14 +47,14 @@ def main():
     args = parser.parse_args()
 
     print('''
- _    _ _           _      ______                       
-| |  | | |         | |     |  _  \                      
-| |  | | |__   __ _| |_ ___| | | |_   _ _ __ ___  _ __  
-| |/\| | '_ \ / _` | __/ __| | | | | | | '_ ` _ \| '_ \ 
+ _    _ _           _      ______
+| |  | | |         | |     |  _  \
+| |  | | |__   __ _| |_ ___| | | |_   _ _ __ ___  _ __
+| |/\| | '_ \ / _` | __/ __| | | | | | | '_ ` _ \| '_ \
 \  /\  / | | | (_| | |_\__ \ |/ /| |_| | | | | | | |_) |
- \/  \/|_| |_|\__,_|\__|___/___/  \__,_|_| |_| |_| .__/ 
-                                                 | |    
-                                                 |_|    
+ \/  \/|_| |_|\__,_|\__|___/___/  \__,_|_| |_| |_| .__/
+                                                 | |
+                                                 |_|
                         v0.2 beta
     ''')
 
@@ -224,9 +225,21 @@ def main():
     time.sleep(10)
 
     try:
-        wa_emu.register_phone(msgstore_path, phone.country_code, phone.national_number, args.wa_verify, wa_code_callback)
+        wa_emu.register_phone(msgstore_path, phone.country_code, phone.national_number)
+
+        # Verify by call or SMS
+        if args.wa_verify == 'sms':
+            logger.info('You should receive a SMS by WhatsApp soon')
+            wa_emu._verify_by_sms(wa_code_callback)
+        else:
+            logger.info('You should receive a call by WhatsApp soon')
+            wa_emu._verify_by_call(wa_code_callback)
+
+        wa_emu.complete_registration(phone.country_code, phone.national_number)
+
     except WaException as e:
-        logger.error('Exception in verification: %s', e.reason)
+        logger.info('Exception in verification: %s', e.reason)
+        code.interact(local=locals())
         sys.exit(1)
 
     logger.info('Phone registered successfully!')

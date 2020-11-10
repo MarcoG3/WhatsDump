@@ -21,7 +21,7 @@ class CommandType:
 
 
 class AndroidSDK:
-    AVD_NAME = 'WhatsDump3'
+    AVD_NAME = 'WhatsDump4'
 
     def __init__(self, avd_name=None):
         self._sdk_path = os.path.abspath('android-sdk')
@@ -276,7 +276,6 @@ class AndroidSDK:
 
     # TODO: log SDK installation output / errors to android-sdk/log.txt
     def _run_raw_cmd(self, cmd, wait=True, input=None, show=False):
-        print(cmd)
         args = cmd.split()
 
         # Set executable permission on linux if not set (zipfile not preserving permissions)

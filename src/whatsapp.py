@@ -18,6 +18,8 @@ class WaException:
 class WhatsApp:
     def __init__(self, adb_client):
         self.adb_client = adb_client
+        self.device = None
+        self.vc = None
 
     def extract_msgstore(self, dst_path):
         storage_paths = [
@@ -43,12 +45,9 @@ class WhatsApp:
 
     def extract_priv_key(self, dst_path):
         dst_full_path = os.path.join(dst_path, 'key')
-
         return self.adb_client.pull('/data/data/com.whatsapp/files/key', dst_full_path) is None
 
-    def register_phone(self, msgstore_path, country_code, phone_no, verify_method, verify_callback):
-        # Step 0: install culebra dependencies - Skipped
-
+    def register_phone(self, msgstore_path, country_code, phone_no):
         # Step 1: cleanup
         if not self._uninstall():
             raise WaException('Can not cleanup device')
@@ -64,15 +63,14 @@ class WhatsApp:
 
         # Step 3a: create / clean /WhatsApp/ data directory
         logger.info('Cleaning WhatsApp...')
-        self.adb_client.shell('rm -rf /sdcard/WhatsApp')
-        self.adb_client.shell('mkdir -p /sdcard/WhatsApp/Databases')
+        logger.info(self.adb_client.shell('rm -rf /sdcard/WhatsApp/Databases/*'))
 
         # Step 3b: move msgstore.db to correct location
         logger.info('Moving extracted database into emulator...')
-        self.adb_client.push(msgstore_path, os.path.join('/sdcard/WhatsApp/Databases/', os.path.basename(msgstore_path)))
+        logger.info(self.adb_client.push(msgstore_path, '/sdcard/WhatsApp/Databases/msgstore.db.crypt12'))
 
-        device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial, verbose=False)
-        vc = ViewClient(device=device, serialno=serialn)
+        self.device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial, verbose=False)
+        self.vc = ViewClient(device=self.device, serialno=serialn)
 
         for permission in [
             'android.permission.WRITE_CONTACTS',
@@ -84,24 +82,19 @@ class WhatsApp:
             self.adb_client.shell("pm grant com.whatsapp {}".format(permission))
             time.sleep(0.05)
 
-        # Step 4: open whatsapp
         if not self._open_app():
             raise WaException('Can not open WhatsApp application')
 
         time.sleep(10)
-        # Step 5: automate registration
-        if not self._automate_accept_eula(vc):
+        if not self._automate_accept_eula():
             raise WaException('Can not accept EULA')
 
-        if not self._allow_access(vc):
-            logger.warning("Skipped allowing WhatsApp to access media/files")
-
-        if not self._do_verify(vc, country_code, phone_no, verify_method, verify_callback):
+        if not self._do_verify(country_code, phone_no):
             raise WaException('Can not verify phone number')
 
-    def _do_verify(self, vc, cc, phone, method, code_callback):
+    def _do_verify(self, cc, phone, method, code_callback):
         # Set country code
-        cc_view = self._wait_views(vc, 'com.whatsapp:id/registration_cc')
+        cc_view = self._wait_views('com.whatsapp:id/registration_cc')
 
         logger.info('Touching and changing country code TextEdit...')
 
@@ -112,7 +105,7 @@ class WhatsApp:
         cc_view.setText(str(cc))
 
         # Set phone number
-        number_view = self._wait_views(vc, 'com.whatsapp:id/registration_phone')
+        number_view = self._wait_views('com.whatsapp:id/registration_phone')
         logger.info('Touching and changing phone number TextEdit...')
 
         if not number_view:
@@ -122,7 +115,7 @@ class WhatsApp:
         number_view.setText(str(phone))
 
         # Click "Next"
-        next_view = self._wait_views(vc, 'com.whatsapp:id/registration_submit')
+        next_view = self._wait_views('com.whatsapp:id/registration_submit')
 
         logger.info('Touching registration submit button...')
 
@@ -133,7 +126,7 @@ class WhatsApp:
 
         # Confirm Dialog clicking "OK"
         # Extend timeout to be 6*5 seconds (5 minutes) because WhatsApp could take time to send code
-        confirm_view = self._wait_views(vc, 'android:id/button1', max_tries=60, frequency=5)
+        confirm_view = self._wait_views('android:id/button1', max_tries=60, frequency=5)
 
         logger.info('Touching OK confirmation button...')
 
@@ -141,58 +134,13 @@ class WhatsApp:
             return False
 
         confirm_view.touch()
-
-        # Verify by call or SMS
-        if method == 'sms':
-            logger.info('You should receive a SMS by WhatsApp soon')
-            self._verify_by_sms(vc, code_callback)
-        else:
-            logger.info('You should receive a call by WhatsApp soon')
-            self._verify_by_call(vc, code_callback)
-
-        """
-        # If adb shell not work use this
-        for allow_attempt in range(0, 3):
-            try:
-                self._wait_views(vc, 'com.whatsapp:id/submit', max_tries=3).touch()
-                self._wait_views(vc, 'com.android.permissioncontroller:id/permission_allow_button', max_tries=3).touch()
-            except Exception as e:
-                logger.error("{} - Exception raised: {}".format(allow_attempt, e))
-        """
-
-        # Restore messages
-        gdrive_msg_view = self._wait_views(vc, 'android:id/message', max_tries=5)
-        skip_btn_view = self._wait_views(vc, 'android:id/button2', max_tries=5)
-
-        if not gdrive_msg_view and not skip_btn_view:
-            logger.info('Expected Google Drive permission dialog, ignoring..')
-        else:
-            skip_btn_view.touch()
-
-        # Restore messages Activity
-        restore_btn_view = self._wait_views(vc, 'com.whatsapp:id/perform_restore', max_tries=30, frequency=5)
-
-        if not restore_btn_view:
-            raise WaException('Cannot find restore button, is msgcrypt associated with +%d %s?' % (cc, phone))
-
-        logger.info('Restoring messages... (might take a while)')
-        restore_btn_view.touch()
-
-        # Wait for result (max 15 minutes)
-        result_msg_view = self._wait_views(vc, 'com.whatsapp:id/msgrestore_result_box', frequency=10, max_tries=90)
-
-        if not result_msg_view:
-            raise WaException('Could not restore messages')
-
-        logger.info('%s', result_msg_view.getText())
         return True
 
-    def _verify_by_sms(self, vc, code_callback):
+    def _verify_by_sms(self, code_callback):
         while True:
             code = code_callback()
-            logger.info("# Debug - Codice ricevuto: {}".format(code))
             if code is not None:
-                if self._try_code(vc, code):
+                if self._try_code(code):
                     return True
 
                 logger.error('Verification code NOT valid!')
@@ -201,7 +149,7 @@ class WhatsApp:
                 logger.info('Attempting to re-send verification code...')
 
                 try:
-                    seconds_to_wait = self._get_countdown_sms(vc)
+                    seconds_to_wait = self._get_countdown_sms()
 
                     # Got countdown seconds, wait and request new code
                     logger.info('Waiting %d seconds to request new SMS', seconds_to_wait)
@@ -210,7 +158,7 @@ class WhatsApp:
                     pass
 
                 # Resend SMS
-                resend_view = self._wait_views(vc, 'com.whatsapp:id/resend_sms_btn')
+                resend_view = self._wait_views('com.whatsapp:id/resend_sms_btn')
 
                 if not resend_view:
                     raise WaException('Cannot find resend sms button view')
@@ -220,15 +168,16 @@ class WhatsApp:
                     raise WaException('Cannot request new code, try again later: %s' % resend_view.getText())
 
                 # Touch
-                resend_view = self._wait_views(vc, 'com.whatsapp:id/resend_sms_btn')
+                resend_view = self._wait_views('com.whatsapp:id/resend_sms_btn')
                 resend_view.touch()
 
-    def _verify_by_call(self, vc, code_callback):
+    def _verify_by_call(self, code_callback):
         request_call = True
+        time.sleep(1)
 
         while True:
-            call_btn_view = self._wait_views(vc, 'com.whatsapp:id/call_btn')
-            countdown_view = self._wait_views(vc, 'com.whatsapp:id/countdown_time_voice', max_tries=1)
+            call_btn_view = self._wait_views('com.whatsapp:id/call_btn')
+            countdown_view = self._wait_views('com.whatsapp:id/countdown_time_voice', max_tries=1)
 
             if not call_btn_view:
                 raise WaException('Could not find call button view')
@@ -238,7 +187,7 @@ class WhatsApp:
 
             if request_call and countdown_view:
                 try:
-                    seconds_to_wait = self._get_countdown_call(vc)
+                    seconds_to_wait = self._get_countdown_call()
 
                     # Got countdown seconds, wait and request new code
                     logger.info('Waiting %d seconds to request a call', seconds_to_wait)
@@ -248,17 +197,16 @@ class WhatsApp:
 
             if request_call:
                 # Update & Touch
-                resend_view = self._wait_views(vc, 'com.whatsapp:id/call_btn')
+                resend_view = self._wait_views('com.whatsapp:id/call_btn')
                 resend_view.touch()
 
-                call_btn_view = self._wait_views(vc, 'com.whatsapp:id/call_btn')
+                call_btn_view = self._wait_views('com.whatsapp:id/call_btn')
                 call_btn_view.touch()
 
             # Ask code
             code = code_callback()
-
             if code is not None:
-                if self._try_code(vc, code):
+                if self._try_code(code):
                     return True
 
                 logger.error('Verification code NOT valid!')
@@ -272,12 +220,12 @@ class WhatsApp:
         logger.info("am start -a android.intent.action.VIEW -d https://v.whatsapp.com/{} com.whatsapp".format(code))
         return self.adb_client.shell('am start -a android.intent.action.VIEW -d https://v.whatsapp.com/{} com.whatsapp'.format(code)).find('Error') == -1
 
-    def _try_code(self, vc, code, use_adb=True):
+    def _try_code(self, code, use_adb=True):
         if use_adb is True and self._try_code_adb(code) is True:
             return True  # If failed, continue with ui interaction
 
         # Input text
-        code_input_view = self._wait_views(vc, 'com.whatsapp:id/verify_sms_code_input')
+        code_input_view = self._wait_views('com.whatsapp:id/verify_sms_code_input')
 
         if not code_input_view:
             logger.error('Could not find SMS code input TextEdit')
@@ -286,20 +234,20 @@ class WhatsApp:
         code_input_view.setText(code)
 
         # Check if valid
-        msg_view = self._wait_views(vc, 'android:id/message')
+        msg_view = self._wait_views('android:id/message')
 
         if msg_view:
             logger.info('Dialog message: %s', msg_view.getText())
 
             # Click OK button to close dialog
-            ok_btn = self._wait_views(vc, 'android:id/button1')
+            ok_btn = self._wait_views('android:id/button1')
 
             if ok_btn:
                 ok_btn.touch()
 
             # If input is blocked, wait
             while True:
-                input_blocked_view = self._wait_views(vc, 'com.whatsapp:id/description_2_bottom', max_tries=3)
+                input_blocked_view = self._wait_views('com.whatsapp:id/description_2_bottom', max_tries=3)
 
                 if not input_blocked_view:
                     return True
@@ -314,14 +262,14 @@ class WhatsApp:
 
         return True
 
-    def _get_countdown_sms(self, vc):
-        return self._get_countdown(vc, 'com.whatsapp:id/countdown_time_sms')
+    def _get_countdown_sms(self):
+        return self._get_countdown('com.whatsapp:id/countdown_time_sms')
 
-    def _get_countdown_call(self, vc):
-        return self._get_countdown(vc, 'com.whatsapp:id/countdown_time_voice')
+    def _get_countdown_call(self):
+        return self._get_countdown('com.whatsapp:id/countdown_time_voice')
 
-    def _get_countdown(self, vc, id):
-        sms_count_view = self._wait_views(vc, id)
+    def _get_countdown(self, id):
+        sms_count_view = self._wait_views(id)
 
         if sms_count_view:
             sms_text = sms_count_view.getText()
@@ -334,21 +282,18 @@ class WhatsApp:
 
         raise WaException('Cannot find countdown seconds')
 
-    def _allow_access(self, vc):
-        # Continue
-        continue_view = self._wait_views(vc, 'com.whatsapp:id/submit')
+    def _allow_access(self):
+        continue_view = self._wait_views('com.whatsapp:id/submit', frequency=3, max_tries=5)
 
         if not continue_view:
             return False
 
         logger.info('Touching "Continue" on permissions box...')
-
         continue_view.touch()
 
         # Allow for both photos/media/files and contacts (asked twice)
         for i in range(2):
-            allow_view = self._wait_views(vc, 'com.android.packageinstaller:id/permission_allow_button')
-
+            allow_view = self._wait_views('com.android.packageinstaller:id/permission_allow_button', frequency=3, max_tries=5)
             if not allow_view:
                 return False
 
@@ -357,12 +302,12 @@ class WhatsApp:
 
         return True
 
-    def _automate_accept_eula(self, vc):
-        msg_view = self._wait_views(vc, 'android:id/message', frequency=6, max_tries=5)
+    def _automate_accept_eula(self):
+        msg_view = self._wait_views('android:id/message', frequency=6, max_tries=5)
 
         # Accept custom ROM alert
         if msg_view and msg_view.getText().find('ROM') != -1:
-            ok_btn = self._wait_views(vc, 'android:id/button2')
+            ok_btn = self._wait_views('android:id/button2')
 
             if not ok_btn:
                 return False
@@ -371,7 +316,7 @@ class WhatsApp:
             ok_btn.touch()
 
         # Agree to EULA
-        msg_view = self._wait_views(vc, 'com.whatsapp:id/eula_accept')
+        msg_view = self._wait_views('com.whatsapp:id/eula_accept')
         if not msg_view:
             return False
 
@@ -390,7 +335,6 @@ class WhatsApp:
     def _uninstall(self):
         if not self._is_app_installed():
             return True
-
         return self.adb_client.uninstall("com.whatsapp")
 
     def _open_app(self):
@@ -399,22 +343,58 @@ class WhatsApp:
     def _is_app_installed(self):
         return self.adb_client.is_installed('com.whatsapp')
 
-    def _wait_views(self, vc, ids, frequency=2, max_tries=10):
+    def _wait_views(self, ids, frequency=2, max_tries=10):
         ids = ids if isinstance(ids, list) else [ids]
         for attempt in range(max_tries):
             try:  # Update view
                 with suppress_stderr():
-                    vc.dump(sleep=0)
+                    self.vc.dump(sleep=1)
             except RuntimeError as e:
-                logger.error('Exception while trying to dump views: %s', e.message)
+                logger.error('{} - Exception while trying to dump views: {}'.format(attempt, e))
 
             # Check if it can find any of the IDs
             for _id in ids:
-                view = vc.findViewById(_id)
+                view = self.vc.findViewById(_id)
                 if view:
                     # if logger.level == logging.DEBUG:
-                    # vc.traverse()
+                    # self.vc.traverse()
                     return view
 
             time.sleep(frequency)  # Check every X seconds
         return None
+
+    def complete_registration(self, cc, phone):
+        gdrive_msg_view = self._wait_views('com.whatsapp:id/permission_message', max_tries=5)
+        skip_btn_view = self._wait_views('com.whatsapp:id/submit', max_tries=5)
+
+        if not gdrive_msg_view and not skip_btn_view:
+            logger.info('1. Expected Google Drive permission dialog, ignoring..')
+        else:
+            skip_btn_view.touch()
+
+        # Restore messages
+        gdrive_msg_view = self._wait_views('android:id/message', max_tries=5)
+        skip_btn_view = self._wait_views('android:id/button2', max_tries=5)
+
+        if not gdrive_msg_view and not skip_btn_view:
+            logger.info('2. Expected Google Drive permission dialog, ignoring..')
+        else:
+            skip_btn_view.touch()
+
+        # Restore messages Activity
+        restore_btn_view = self._wait_views('com.whatsapp:id/perform_restore', max_tries=30, frequency=5)
+
+        if not restore_btn_view:
+            raise WaException('Cannot find restore button, is msgcrypt associated with +%d %s?' % (cc, phone))
+
+        logger.info('Restoring messages... (might take a while)')
+        restore_btn_view.touch()
+
+        # Wait for result (max 15 minutes)
+        result_msg_view = self._wait_views('com.whatsapp:id/msgrestore_result_box', frequency=10, max_tries=90)
+
+        if not result_msg_view:
+            raise WaException('Could not restore messages')
+
+        logger.info('%s', result_msg_view.getText())
+        return True
