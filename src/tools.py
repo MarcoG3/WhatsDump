@@ -2,6 +2,7 @@ import os
 import time
 
 from com.dtmilano.android.viewclient import ViewClient
+
 # from com.dtmilano.android.adb.adbclient import AdbClient as VcAdbClient
 
 
@@ -14,11 +15,11 @@ class ViewClientTools:
         return ViewClient(device=device, serialno=serialn)
 
     def install_culebra_tools(self):
-        tester_path = os.path.abspath(os.path.join('apks', 'culebratester.apk'))
-        inst_path = os.path.abspath(os.path.join('apks', 'culebratester.test.apk'))
+        tester_path = os.path.abspath(os.path.join("apks", "culebratester.apk"))
+        inst_path = os.path.abspath(os.path.join("apks", "culebratester.test.apk"))
 
-        print(self.adb_client.is_installed('com.dtmilano.android.culebratester'))
+        print(self.adb_client.is_installed("com.dtmilano.android.culebratester"))
         self.adb_client.install(tester_path)
 
-        print(self.adb_client.is_installed('com.dtmilano.android.culebratester.test'))
+        print(self.adb_client.is_installed("com.dtmilano.android.culebratester.test"))
         self.adb_client.install(inst_path)
