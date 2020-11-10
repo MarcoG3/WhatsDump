@@ -89,10 +89,9 @@ class WhatsApp:
         if not self._do_verify(country_code, phone_no):
             raise WaException("Can not verify phone number")
 
-    def _do_verify(self, cc, phone, method, code_callback):
+    def _do_verify(self, cc, phone):
         # Set country code
         cc_view = self._wait_views("com.whatsapp:id/registration_cc")
-
         logger.info("Touching and changing country code TextEdit...")
 
         if not cc_view:
@@ -104,7 +103,6 @@ class WhatsApp:
         # Set phone number
         number_view = self._wait_views("com.whatsapp:id/registration_phone")
         logger.info("Touching and changing phone number TextEdit...")
-
         if not number_view:
             return False
 
@@ -113,29 +111,23 @@ class WhatsApp:
 
         # Click "Next"
         next_view = self._wait_views("com.whatsapp:id/registration_submit")
-
         logger.info("Touching registration submit button...")
-
         if not next_view:
             return False
-
         next_view.touch()
 
         # Confirm Dialog clicking "OK"
         # Extend timeout to be 6*5 seconds (5 minutes) because WhatsApp could take time to send code
         confirm_view = self._wait_views("android:id/button1", max_tries=60, frequency=5)
-
         logger.info("Touching OK confirmation button...")
-
         if not confirm_view:
             return False
-
         confirm_view.touch()
         return True
 
     def _verify_by_sms(self, code_callback):
         while True:
-            code = code_callback()
+            code = code_callback if type(code_callback) in [str, int] else code_callback()
             if code is not None:
                 if self._try_code(code):
                     return True
@@ -201,7 +193,7 @@ class WhatsApp:
                 call_btn_view.touch()
 
             # Ask code
-            code = code_callback()
+            code = code_callback if type(code_callback) in [str, int] else code_callback()
             if code is not None:
                 if self._try_code(code):
                     return True

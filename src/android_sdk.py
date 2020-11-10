@@ -14,14 +14,14 @@ logger = logging.getLogger("WhatsDump")
 
 
 class CommandType:
-    PLATFORM_TOOLS = (1,)
-    TOOLS = (2,)
+    PLATFORM_TOOLS = 1
+    TOOLS = 2
     TOOLS_BIN = 3
     EMULATOR = 4
 
 
 class AndroidSDK:
-    AVD_NAME = "WhatsDump4"
+    AVD_NAME = "WhatsDump"
 
     def __init__(self, avd_name=None):
         self._sdk_path = os.path.abspath("android-sdk")
@@ -104,9 +104,19 @@ class AndroidSDK:
     def adb_root(self):
         return self._run_cmd_adb("root").returncode == 0
 
-    def start_emulator(self, adb_client, show_screen, no_accel):
+    def start_emulator(self, adb_client, show_screen=True, no_accel=True, snapshot=False):
         emulator_device = None
-        params = "-avd %s -writable-system -selinux permissive -no-boot-anim -noaudio -no-snapshot -partition-size 2047 "
+        params = [
+            "avd {}".format(self.AVD_NAME),
+            "writable-system",
+            "selinux permissive",
+            "no-boot-anim",
+            "noaudio",
+            "partition-size 2047",
+        ]
+
+        if snapshot is False:
+            params.append("no-snapshot")
 
         # Stop any running instance of WhatsDump AVD
         # self.stop_emulator(adb_client)
@@ -116,14 +126,16 @@ class AndroidSDK:
 
         # Disable hardware acceleration if asked to
         if no_accel:
-            params += "-no-accel -gpu on "
+            params.append("no-accel")
+            params.append("gpu on")
 
         # Start emulator
-        proc = self._run_cmd_emulator(params % self.AVD_NAME, show_screen, wait=False, show=True)
+        params = "-" + " -".join(params)
+        proc = self._run_cmd_emulator(params, show_screen, wait=False, show=True)
 
         # Check if any emulator connects to ADB
         while not emulator_device:
-            if proc.returncode != None:
+            if proc.returncode is not None:
                 if proc.returncode != 0:
                     logger.error("Emulator process returned an error")
                     return False
