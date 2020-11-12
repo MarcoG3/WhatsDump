@@ -129,9 +129,12 @@ class AndroidSDK:
             params.append("no-accel")
             params.append("gpu on")
 
+        if show_screen is False:
+            params.append("no-window")
+
         # Start emulator
         params = "-" + " -".join(params)
-        proc = self._run_cmd_emulator(params, show_screen, wait=False, show=True)
+        proc = self._run_cmd_emulator(params, wait=False, show=True)
 
         # Check if any emulator connects to ADB
         while not emulator_device:
@@ -148,6 +151,8 @@ class AndroidSDK:
                 if device.serial.find("emulator") != -1:
                     emulator_device = device
                     break
+
+            time.sleep(1)
 
         # Wait boot to complete
         while True:
@@ -280,10 +285,7 @@ class AndroidSDK:
     Here is the official document for Android emulator command line usage: https://developer.android.com/studio/run/emulator-commandline
     """
 
-    def _run_cmd_emulator(self, args, show_screen, wait=True, input=None, show=False):
-        if not show_screen:
-            args += " -no-window"
-
+    def _run_cmd_emulator(self, args, wait=True, input=None, show=False):
         # return self._run_cmd(CommandType.TOOLS, 'emulator', args, wait, input, show)
         return self._run_cmd(CommandType.EMULATOR, "emulator", args, wait, input, show)
 

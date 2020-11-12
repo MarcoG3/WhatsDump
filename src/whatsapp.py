@@ -81,7 +81,7 @@ class WhatsApp:
         if not self._open_app():
             raise WaException("Can not open WhatsApp application")
 
-        time.sleep(5)
+        time.sleep(15)
         if not self._automate_accept_eula():
             raise WaException("Can not accept EULA")
 
@@ -132,8 +132,11 @@ class WhatsApp:
                 self.adb_client.shell("input keyevent KEYCODE_HOME")
                 time.sleep(2)
 
-            self.device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial, verbose=False)
-            self.vc = ViewClient(device=self.device, serialno=serialn)
+            kwargs1 = {'serialno': self.adb_client.serial, 'verbose': False, 'ignoresecuredevice': False, 'ignoreversioncheck': False}
+            self.device, serialno = ViewClient.connectToDeviceOrExit(**kwargs1)
+
+            kwargs2 = {'forceviewserveruse': False, 'startviewserver': True, 'autodump': False, 'ignoreuiautomatorkilled': True, 'compresseddump': True, 'useuiautomatorhelper': False, 'debug': {}}
+            self.vc = ViewClient(self.device, serialno, **kwargs2)
 
     def _verify_by_sms(self, code_callback):
         self.connect_device()
@@ -351,7 +354,7 @@ class WhatsApp:
         for attempt in range(max_tries):
             try:  # Update view
                 with suppress_stderr():
-                    self.vc.dump(sleep=1)
+                    items = self.vc.dump(window='-1')
             except RuntimeError as e:
                 logger.error("{} - Exception while trying to dump views: {}".format(attempt, e))
 
