@@ -66,8 +66,7 @@ class WhatsApp:
         logger.info("Moving extracted database into emulator...")
         logger.info(self.adb_client.push(msgstore_path, "/sdcard/WhatsApp/Databases/msgstore.db.crypt12"))
 
-        self.device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial, verbose=False)
-        self.vc = ViewClient(device=self.device, serialno=serialn)
+        self.connect_device()
 
         for permission in [
             "android.permission.WRITE_CONTACTS",
@@ -82,7 +81,7 @@ class WhatsApp:
         if not self._open_app():
             raise WaException("Can not open WhatsApp application")
 
-        time.sleep(10)
+        time.sleep(5)
         if not self._automate_accept_eula():
             raise WaException("Can not accept EULA")
 
@@ -125,7 +124,20 @@ class WhatsApp:
         confirm_view.touch()
         return True
 
+    def connect_device(self, back_home=False):
+        if self.device is None:
+            # We have founded a strange issue, when the screen appear on wait security code the countdown for another code refresh too frequently
+            # Go back to home please ...
+            if back_home is True:
+                self.adb_client.shell("input keyevent KEYCODE_HOME")
+                time.sleep(2)
+
+            self.device, serialn = ViewClient.connectToDeviceOrExit(serialno=self.adb_client.serial, verbose=False)
+            self.vc = ViewClient(device=self.device, serialno=serialn)
+
     def _verify_by_sms(self, code_callback):
+        self.connect_device()
+
         while True:
             code = code_callback if type(code_callback) in [str, int] else code_callback()
             if code is not None:
@@ -161,6 +173,8 @@ class WhatsApp:
                 resend_view.touch()
 
     def _verify_by_call(self, code_callback):
+        self.connect_device()
+
         request_call = True
         time.sleep(1)
 

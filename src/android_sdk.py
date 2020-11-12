@@ -187,6 +187,30 @@ class AndroidSDK:
 
         return False
 
+    def delete_avd(self):
+        try:
+            process = self._run_cmd_avdmanager("delete avd -n {}".format(self.AVD_NAME))
+        except Exception:
+            return False
+
+        if process.returncode != 0:
+            logger.debug("avdmanager delete avd -n {} command return code: {}".format(self.AVD_NAME, process.returncode))
+            return False
+
+        """
+        ▶ ./avdmanager delete avd -n WhatsDump3
+        Deleting file /home/alessandro/.android/avd/WhatsDump3.ini
+        Deleting folder /home/alessandro/.android/avd/WhatsDump3.avd
+
+        AVD 'WhatsDump3' deleted.
+        """
+
+        for line in process.stdout:
+            if line.find("deleted".encode()) != -1:
+                return True
+
+        return False
+
     def _download(self, extract_dir):
         output_zip = os.path.join(extract_dir, "tools.zip")
         tools_dir = os.path.join(extract_dir, "tools")
