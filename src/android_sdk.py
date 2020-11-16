@@ -104,7 +104,7 @@ class AndroidSDK:
     def adb_root(self):
         return self._run_cmd_adb("root").returncode == 0
 
-    def start_emulator(self, adb_client, show_screen=True, no_accel=True, snapshot=False):
+    def start_emulator(self, adb_client, show_screen=True, no_accel=True, snapshot=False, docker=False):
         emulator_device = None
         params = [
             "avd {}".format(self.AVD_NAME),
@@ -127,9 +127,8 @@ class AndroidSDK:
         # Disable hardware acceleration if asked to
         if no_accel:
             params.append("no-accel")
-            params.append("gpu on")
-        else:
-            params.append("gpu off")
+            if docker is True:
+                params.append("gpu swiftshader_indirect" if docker is True else "gpu on")
 
         if show_screen is False:
             params.append("no-window")
