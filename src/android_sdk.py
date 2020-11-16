@@ -128,6 +128,8 @@ class AndroidSDK:
         if no_accel:
             params.append("no-accel")
             params.append("gpu on")
+        else:
+            params.append("gpu off")
 
         if show_screen is False:
             params.append("no-window")
