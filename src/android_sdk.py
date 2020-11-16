@@ -113,6 +113,7 @@ class AndroidSDK:
             "no-boot-anim",
             "noaudio",
             "partition-size 2047",
+            "use-system-libs",
         ]
 
         if snapshot is False:
@@ -127,8 +128,11 @@ class AndroidSDK:
         # Disable hardware acceleration if asked to
         if no_accel:
             params.append("no-accel")
-            if docker is True:
-                params.append("gpu swiftshader_indirect" if docker is True else "gpu on")
+            params.append("gpu on")
+
+        accel_check = self._run_cmd_emulator("-accel-check")
+        for line in accel_check.stdout:
+            print(line)  # is installed and usable
 
         if show_screen is False:
             params.append("no-window")
