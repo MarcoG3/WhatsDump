@@ -49,6 +49,7 @@ class WhatsApp:
         return self.adb_client.pull("/data/data/com.whatsapp/files/key", dst_full_path) is None
 
     def register_phone(self, msgstore_path, country_code, phone_no):
+        time.sleep(2.5)
         # Step 1: cleanup
         if not self._uninstall():
             raise WaException("Can not cleanup device")
@@ -64,21 +65,21 @@ class WhatsApp:
 
         # Step 3a: create / clean /WhatsApp/ data directory
         self.logger.info("Cleaning WhatsApp...")
-        self.logger.info(self.adb_client.shell("rm -rf /sdcard/WhatsApp/Databases/*"))
+        self.adb_client.shell("rm -rf /sdcard/WhatsApp/Databases/*")
 
         # Step 3b: move msgstore.db to correct location
         self.logger.info("Moving extracted database into emulator...")
-        self.logger.info(self.adb_client.push(msgstore_path, "/sdcard/WhatsApp/Databases/msgstore.db.crypt12"))
+        self.adb_client.push(msgstore_path, "/sdcard/WhatsApp/Databases/msgstore.db.crypt12")
 
         self.connect_device()
 
+        self.logger.info("Grant permission to android WRITE/READ_CONTACTS, WRITE/READ_EXTERNAL_STORAGE")
         for permission in [
             "android.permission.WRITE_CONTACTS",
             "android.permission.READ_CONTACTS",
             "android.permission.WRITE_EXTERNAL_STORAGE",
             "android.permission.READ_EXTERNAL_STORAGE",
         ]:
-            self.logger.info("pm grant com.whatsapp {}".format(permission))
             self.adb_client.shell("pm grant com.whatsapp {}".format(permission))
             time.sleep(0.05)
 
@@ -353,7 +354,7 @@ class WhatsApp:
     def _is_app_installed(self):
         return self.adb_client.is_installed("com.whatsapp")
 
-    def _wait_views(self, ids, frequency=2, max_tries=10):
+    def _wait_views(self, ids, frequency=3, max_tries=15):
         ids = ids if isinstance(ids, list) else [ids]
         for attempt in range(max_tries):
             try:  # Update view
@@ -374,8 +375,9 @@ class WhatsApp:
         return None
 
     def complete_registration(self, cc, phone):
-        gdrive_msg_view = self._wait_views("com.whatsapp:id/permission_message", max_tries=5)
-        skip_btn_view = self._wait_views("com.whatsapp:id/submit", max_tries=5)
+        time.sleep(2.5)
+        gdrive_msg_view = self._wait_views("com.whatsapp:id/permission_message", max_tries=7)
+        skip_btn_view = self._wait_views("com.whatsapp:id/submit", max_tries=7)
 
         if not gdrive_msg_view and not skip_btn_view:
             self.logger.info("1. Expected Google Drive permission dialog, ignoring..")
@@ -383,8 +385,8 @@ class WhatsApp:
             skip_btn_view.touch()
 
         # Restore messages
-        gdrive_msg_view = self._wait_views("android:id/message", max_tries=5)
-        skip_btn_view = self._wait_views("android:id/button2", max_tries=5)
+        gdrive_msg_view = self._wait_views("android:id/message", max_tries=7)
+        skip_btn_view = self._wait_views("android:id/button2", max_tries=7)
 
         if not gdrive_msg_view and not skip_btn_view:
             self.logger.info("2. Expected Google Drive permission dialog, ignoring..")
