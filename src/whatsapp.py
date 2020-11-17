@@ -7,6 +7,12 @@ from src.utils import suppress_stderr
 
 from com.dtmilano.android.viewclient import ViewClient
 
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s",
+    datefmt="%d/%m/%Y %H:%M:%S",
+    level=logging.INFO,
+)
+
 class WaException:
     def __init__(self, reason):
         self.reason = reason
@@ -14,10 +20,10 @@ class WaException:
 
 class WhatsApp:
     def __init__(self, adb_client):
-        self.logger = logging.getLogger("{} - WhatsApp".format(self.adb_client.serial))
         self.adb_client = adb_client
         self.device = None
         self.vc = None
+        self.logger = logging.getLogger("{} - WhatsApp".format(self.adb_client.serial))
 
     def extract_msgstore(self, dst_path):
         storage_paths = [self.adb_client.shell("echo $EXTERNAL_STORAGE"), "/storage/emulated/0"]
