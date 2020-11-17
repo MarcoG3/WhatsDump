@@ -13,7 +13,7 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-class WaException:
+class WaException(Exception):
     def __init__(self, reason):
         self.reason = reason
 
