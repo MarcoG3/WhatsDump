@@ -359,7 +359,7 @@ class WhatsApp:
         for attempt in range(max_tries):
             try:  # Update view
                 with suppress_stderr():
-                    items = self.vc.dump(window='-1')
+                    self.vc.dump(window='-1')
             except RuntimeError as e:
                 self.logger.error("{} - Exception while trying to dump views: {}".format(attempt, e))
 
@@ -385,8 +385,8 @@ class WhatsApp:
             skip_btn_view.touch()
 
         # Restore messages
-        gdrive_msg_view = self._wait_views("android:id/message", max_tries=7)
-        skip_btn_view = self._wait_views("android:id/button2", max_tries=7)
+        gdrive_msg_view = self._wait_views("android:id/message", max_tries=3)
+        skip_btn_view = self._wait_views("android:id/button2", max_tries=3)
 
         if not gdrive_msg_view and not skip_btn_view:
             self.logger.info("2. Expected Google Drive permission dialog, ignoring..")

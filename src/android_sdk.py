@@ -105,8 +105,8 @@ class AndroidSDK:
     def stop_adb(self):
         return self._run_cmd_adb("kill-server").returncode == 0
 
-    def adb_root(self):
-        return self._run_cmd_adb("root").returncode == 0
+    def adb_root(self, serialn):
+        return self._run_cmd_adb("-s {} root".format(serialn)).returncode == 0
 
     def start_emulator(self, adb_client, show_screen=True, no_accel=True, snapshot=False, proxy=None):
         emulator_device = None
