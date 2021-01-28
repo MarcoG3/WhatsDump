@@ -1,3 +1,6 @@
+
+# Rewriting entire project. WIP
+
 # WhatsDump
 Extract WhatsApp private key from any Android device (Android 7+ supported).
 This tool spawns a clean Android 6 emulator and attempts to register with your number to extract msgstore private key.
