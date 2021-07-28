@@ -150,3 +150,6 @@ dmypy.json
 .venv/
 
 # End of https://www.gitignore.io/api/python,macos
+
+.vscode/*
+*.crypt12
