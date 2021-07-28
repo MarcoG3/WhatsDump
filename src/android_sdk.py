@@ -49,14 +49,14 @@ class AndroidSDK:
 
         # Accept licenses
         logger.info('Accepting SDK licenses..')
-        s1 = self._run_cmd_sdkmanager("--licenses", input='y\n'*20, show=True)
+        s1 = self._run_cmd_sdkmanager("--licenses", input='y', show=True)
 
         if s1.returncode != 0:
             logger.error('Could not accept SDK Manager licenses')
             return False
 
         # List all packages to check HAXM is supported
-        s2 = self._run_cmd_sdkmanager("--list")
+        s2 = self._run_cmd_sdkmanager("--list", wait=False)
         s2_out, s2_err = s2.communicate()
 
         if s2.returncode != 0:
@@ -70,7 +70,7 @@ class AndroidSDK:
             install_args += ' extras;intel;Hardware_Accelerated_Execution_Manager'
 
         logger.info('Installing packages from SDK Manager...')
-        s3 = self._run_cmd_sdkmanager(install_args, input='y\n'*20, show=True)
+        s3 = self._run_cmd_sdkmanager(install_args, input='y', show=True)
 
         if s3.returncode != 0:
             logger.error('Could not install packages from SDK Manager')
@@ -177,7 +177,7 @@ class AndroidSDK:
             logger.info('Downloading and installing Android SDK...')
 
             # Download
-            r = requests.get('https://developer.android.com/studio/')
+            r = requests.get('https://web.archive.org/web/20190403122148/https://developer.android.com/studio/')
 
             if r.status_code != 200:
                 logger.error('Failed GET request to developer.android.com')
