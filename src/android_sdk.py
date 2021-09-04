@@ -167,7 +167,7 @@ class AndroidSDK:
 
     def _download(self, extract_dir):
         output_zip = os.path.join(extract_dir, 'tools.zip')
-        tools_dir = os.path.join(extract_dir, 'tools')
+        tools_dir = os.path.join(extract_dir, 'cmdline-tools', 'tools')
 
         if os.path.exists(tools_dir):
             logger.info('SDK tools directory already exists, skipping download & extraction...')
@@ -183,7 +183,7 @@ class AndroidSDK:
                 logger.error('Failed GET request to developer.android.com')
                 return False
 
-            sdk_re = re.search(r'https://dl.google.com/android/repository/sdk-tools-' + platform.system().lower() + '-(\d+).zip', r.text)
+            sdk_re = re.search(r'https://dl.google.com/android/repository/commandlinetools-' + platform.system().lower() + '-\d+.*\.zip', r.text)
 
             if not sdk_re:
                 logger.error('Failed regex matching to find latest Android SDK (platform %s)', platform.system())
@@ -206,7 +206,7 @@ class AndroidSDK:
 
         # Extraction
         z = zipfile.ZipFile(output_zip)
-        z.extractall(extract_dir)
+        z.extractall(os.path.dirname(tools_dir))
 
         logger.info('Android SDK successfully extracted in android-sdk/')
 
@@ -234,9 +234,9 @@ class AndroidSDK:
         if type == CommandType.PLATFORM_TOOLS:
             path = os.path.join(self._sdk_path, 'platform-tools')
         elif type == CommandType.TOOLS:
-            path = os.path.join(self._sdk_path, 'tools')
+            path = os.path.join(self._sdk_path, 'emulator')
         elif type == CommandType.TOOLS_BIN:
-            path = os.path.join(self._sdk_path, 'tools', 'bin')
+            path = os.path.join(self._sdk_path, 'cmdline-tools', 'tools', 'bin')
 
             if is_windows:
                 binary = '%s.bat' % binary
