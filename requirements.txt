@@ -9,7 +9,7 @@ idna==2.8
 kiwisolver==1.0.1
 libusb1==1.7
 matplotlib==2.2.3
-numpy==1.16.0
+numpy==1.22.0
 phonenumbers==8.10.3
 pure-python-adb==0.1.5.dev0
 pyparsing==2.3.1
